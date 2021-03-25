@@ -39,7 +39,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  googleId: String
+  googleId: String,
+  secret: String
 });
 
 // add a plugin to the schema to hash and salt passwords
@@ -101,13 +102,39 @@ app.get("/register", function(req, res) {
   res.render("register");
 });
 
-// if the user is already logged in then render the secrets page
+// search the database for secret fields that is not null
 app.get("/secrets", function(req, res){
+  User.find({"secret":{$ne: null}}, function(err, foundUsers){
+    if(err){
+      console.log(err);
+    } else {
+      res.render("secrets", {usersWithSecrets: foundUsers})
+    }
+  });
+});
+
+app.get("/submit", function(req, res){
   if(req.isAuthenticated()){
-    res.render("secrets");
+    res.render("submit");
   } else {
     res.redirect("/login");
   }
+});
+
+app.post("/submit", function(req, res){
+  const submittedSecret = req.body.secret;
+  User.findById(req.user.id, function(err, foundUser){
+    if(err){
+      console.log(err);
+    } else {
+      if(foundUser){
+        foundUser.secret = submittedSecret;
+        foundUser.save(function(){
+          res.redirect("/secrets");
+        });
+      }
+    }
+  });
 });
 
 // de-authenticate the user and end the user session
